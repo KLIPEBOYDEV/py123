@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Редактировать занятие{% endblock %}
+{% block topbar_title %}Редактировать занятие{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('schedule') }}" class="btn btn-secondary">← К расписанию</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:760px">
+  <div class="card-title" style="margin-bottom:8px;">{{ group.name if group else 'Группа' }}</div>
+  <div style="color:var(--muted); font-size:13px; margin-bottom:14px;">
+    {{ lesson.date }} · текущее время: <strong>{{ lesson.time }}</strong>
+  </div>
+
+  <form method="POST">
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Режим редактирования *</label>
+      <select name="edit_mode" id="edit-mode" onchange="toggleEditMode()">
+        <option value="single">Только это занятие</option>
+        <option value="recurring">Авторасписание (по дням недели)</option>
+      </select>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+      <div class="form-group">
+        <label>Время *</label>
+        <input type="time" name="time" required value="{{ lesson.time }}">
+      </div>
+      <div class="form-group">
+        <label>Длительность (мин)</label>
+        <input type="number" name="duration" value="{{ lesson.duration_minutes or 60 }}" min="15" step="15">
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px">
+      <div class="form-group">
+        <label>Зал</label>
+        <input type="text" name="room" value="{{ lesson.room or '' }}">
+      </div>
+      <div class="form-group">
+        <label>Заметки</label>
+        <input type="text" name="notes" value="{{ lesson.notes or '' }}">
+      </div>
+    </div>
+
+    <div id="recurring-edit-wrap" style="display:none; margin-top:14px">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+        <div class="form-group">
+          <label>С даты *</label>
+          <input type="date" name="start_date" value="{{ lesson.date }}">
+        </div>
+        <div class="form-group">
+          <label>По дату *</label>
+          <input type="date" name="end_date" value="{{ lesson.date }}">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px">
+        <label>Дни недели *</label>
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:6px">
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="0"> Пн</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="1"> Вт</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="2"> Ср</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="3"> Чт</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="4"> Пт</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="5"> Сб</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="6"> Вс</label>
+        </div>
+        <div style="color:var(--muted); font-size:12px; margin-top:8px;">
+          В этом режиме будут обновлены занятия этой группы в выбранном диапазоне дат на указанные дни недели.
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="form-actions">
+      <input type="hidden" name="week_offset" value="{{ request.args.get('week', 0) }}">
+      <button type="submit" class="btn btn-primary">Сохранить</button>
+      <a class="btn btn-secondary" href="{{ url_for('schedule') }}">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleEditMode() {
+  const mode = document.getElementById('edit-mode').value;
+  const wrap = document.getElementById('recurring-edit-wrap');
+  wrap.style.display = mode === 'recurring' ? 'block' : 'none';
+}
+toggleEditMode();
+</script>
+{% endblock %}
+

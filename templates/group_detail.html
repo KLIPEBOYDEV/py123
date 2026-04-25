@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }}{% endblock %}
+{% block topbar_title %}{{ group.name }}{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('edit_group', id=group.id) }}" class="btn btn-secondary">Изменить</a>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid; grid-template-columns: 2fr 1fr; gap: 20px">
+  <!-- Members -->
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">👤 Участники ({{ members|length }}/{{ group.max_capacity }})</div>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('add-client-modal').classList.add('open')">+ Добавить</button>
+      </div>
+      {% if members %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Имя</th><th>Телефон</th><th>Дата вступления</th><th></th></tr></thead>
+          <tbody>
+            {% for m in members %}
+            <tr>
+              <td>
+                <a href="{{ url_for('client_detail', id=m.id) }}">{{ m.name }}</a>
+                <a href="{{ url_for('sell_subscription', client_id=m.id) }}" class="btn btn-link btn-sm" style="margin-left:8px; font-size:12px;">Продать абонемент</a>
+              </td>
+              <td>{{ m.phone or '—' }}</td>
+              <td style="color:var(--muted)">{{ m.joined_date }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('remove_client_from_group', group_id=group.id, client_id=m.id) }}" onsubmit="return confirm('Убрать из группы?')">
+                  <button class="btn btn-danger btn-sm btn-icon">✕</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state"><div class="icon">👤</div><p>В группе пока нет участников</p></div>
+      {% endif %}
+    </div>
+
+    <!-- Schedule -->
+    <div class="card" style="margin-top: 20px">
+      <div class="card-header">
+        <div class="card-title">📅 Расписание группы</div>
+        <a href="{{ url_for('schedule') }}" class="btn btn-secondary btn-sm">Управлять</a>
+      </div>
+      {% if schedule %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Дата</th><th>Время</th><th>Длит.</th><th>Зал</th></tr></thead>
+          <tbody>
+            {% for s in schedule %}
+            <tr>
+              <td>{{ s.date }}</td>
+              <td><strong style="color:var(--accent)">{{ s.time }}</strong></td>
+              <td>{{ s.duration_minutes }} мин</td>
+              <td>{{ s.room or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state"><div class="icon">📅</div><p>Занятий не запланировано</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Info -->
+  <div class="card" style="height: fit-content">
+    <div class="card-title" style="margin-bottom:16px">Информация</div>
+    <div style="display:flex; flex-direction:column; gap:14px">
+      <div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Тренер</div>
+        <div>{{ group.trainer_name or '—' }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Возраст</div>
+        <div>{{ group.age_range or '—' }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Уровень</div>
+        <div>{{ group.level or '—' }}</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Загрузка</div>
+        <div>
+          <div style="height:6px; background:var(--surface2); border-radius:3px; margin-bottom:4px">
+            <div style="height:6px; background:var(--accent); border-radius:3px; width:{{ [(members|length / group.max_capacity * 100)|int, 100]|min }}%"></div>
+          </div>
+          {{ members|length }} / {{ group.max_capacity }}
+        </div>
+      </div>
+      {% if group.description %}
+      <div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Описание</div>
+        <div style="font-size:13px; color:var(--muted)">{{ group.description }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Modal: add client -->
+<div class="modal-overlay" id="add-client-modal">
+  <div class="modal">
+    <h3>Добавить клиента в группу</h3>
+    <form method="POST" action="{{ url_for('add_client_to_group', id=group.id) }}">
+      <input type="hidden" name="client_id" id="selected_client_id">
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Поиск клиента</label>
+        <input type="text" id="client_search" placeholder="Начните вводить имя или фамилию" autocomplete="off">
+      </div>
+      <div style="display:flex; gap:10px">
+        <button type="submit" class="btn btn-primary" id="add_btn" disabled>Добавить</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-client-modal').classList.remove('open')">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('client_search');
+    const hiddenInput = document.getElementById('selected_client_id');
+    const addBtn = document.getElementById('add_btn');
+    let suggestions = [];
+    let currentIndex = -1;
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        hiddenInput.value = '';
+        addBtn.disabled = true;
+        if (query.length < 2) {
+            hideSuggestions();
+            return;
+        }
+        fetch(`/api/clients/search?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                suggestions = data;
+                showSuggestions(data);
+            });
+    });
+
+    function showSuggestions(sugs) {
+        hideSuggestions();
+        if (sugs.length === 0) return;
+
+        const list = document.createElement('ul');
+        list.className = 'autocomplete-list';
+        list.style.cssText = `
+            position: absolute;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            width: 100%;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        `;
+
+        sugs.forEach((sug, index) => {
+            const item = document.createElement('li');
+            item.textContent = sug.name;
+            item.dataset.id = sug.id;
+            item.style.cssText = `
+                padding: 8px 12px;
+                cursor: pointer;
+                color: var(--text);
+            `;
+            item.addEventListener('click', () => {
+                searchInput.value = sug.name;
+                hiddenInput.value = sug.id;
+                addBtn.disabled = false;
+                hideSuggestions();
+            });
+            item.addEventListener('mouseenter', () => {
+                currentIndex = index;
+                highlightItem();
+            });
+            list.appendChild(item);
+        });
+
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'relative';
+        searchInput.parentNode.insertBefore(wrapper, searchInput);
+        wrapper.appendChild(searchInput);
+        wrapper.appendChild(list);
+        wrapper.style.position = 'relative';
+        searchInput.style.width = '100%';
+    }
+
+    function hideSuggestions() {
+        const list = document.querySelector('.autocomplete-list');
+        if (list) list.remove();
+        const wrapper = searchInput.parentNode;
+        if (wrapper && wrapper.tagName === 'DIV' && wrapper.style.position === 'relative') {
+            wrapper.parentNode.insertBefore(searchInput, wrapper);
+            wrapper.remove();
+        }
+        currentIndex = -1;
+    }
+
+    searchInput.addEventListener('keydown', function(e) {
+        const list = document.querySelector('.autocomplete-list');
+        if (!list) return;
+
+        const items = list.querySelectorAll('li');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentIndex = (currentIndex + 1) % items.length;
+            highlightItem();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+            highlightItem();
+        } else if (e.key === 'Enter' && currentIndex >= 0) {
+            e.preventDefault();
+            items[currentIndex].click();
+        } else if (e.key === 'Escape') {
+            hideSuggestions();
+        }
+    });
+
+    function highlightItem() {
+        const items = document.querySelectorAll('.autocomplete-list li');
+        items.forEach((item, index) => {
+            item.style.background = index === currentIndex ? 'var(--accent)' : 'transparent';
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !e.target.closest('.autocomplete-list')) {
+            hideSuggestions();
+        }
+    });
+});
+</script>
+{% endblock %}

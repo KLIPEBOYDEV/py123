@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Операции и движения денег{% endblock %}
+{% block topbar_title %}Операции и движения денег{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('analytics', date_from=date_from, date_to=date_to) }}" class="btn btn-secondary">← К аналитике</a>
+{% endblock %}
+{% block extra_styles %}
+<style>
+.filter-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+@media (max-width: 768px) {
+  .filter-form {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:20px;">
+  <form method="GET" action="{{ url_for('analytics_operations') }}" class="filter-form">
+    <div class="form-group">
+      <label>С даты</label>
+      <input type="date" name="date_from" value="{{ date_from }}">
+    </div>
+    <div class="form-group">
+      <label>По дату</label>
+      <input type="date" name="date_to" value="{{ date_to }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Показать</button>
+  </form>
+</div>
+
+<div class="card">
+  {% if operations %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Операция</th>
+          <th>Источник</th>
+          <th>Клиент</th>
+          <th>Группа</th>
+          <th>Детали</th>
+          <th>Оплата</th>
+          <th>Сумма, ₽</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for op in operations %}
+        <tr>
+          <td>{{ op.operation_date }}</td>
+          <td>
+            {% if op.operation_kind == 'income' %}
+              <span class="badge badge-green">Поступление</span>
+            {% elif op.operation_kind == 'cancelled' %}
+              <span class="badge badge-red">Аннулирование</span>
+            {% else %}
+              <span class="badge badge-yellow">Списание</span>
+            {% endif %}
+          </td>
+          <td>{{ op.source }}</td>
+          <td>{{ op.client_name }}</td>
+          <td>{{ op.group_name }}</td>
+          <td>{{ op.details }}</td>
+          <td>
+            {% if op.payment_method == 'cash' %}
+              Нал
+            {% elif op.payment_method == 'card' %}
+              Безнал
+            {% elif op.payment_method == 'mixed' %}
+              Смешанная
+            {% elif op.payment_method == 'subscription' %}
+              Абонемент
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            {% if op.operation_kind == 'cancelled' %}
+              <span style="color:var(--danger)">-{{ "%.0f"|format(op.amount) }}</span>
+            {% elif op.operation_kind == 'income' %}
+              <span style="color:var(--success)">+{{ "%.0f"|format(op.amount) }}</span>
+            {% else %}
+              <span style="color:var(--muted)">0</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="icon">🧾</div><p>Операций за выбранный период нет</p></div>
+  {% endif %}
+</div>
+{% endblock %}

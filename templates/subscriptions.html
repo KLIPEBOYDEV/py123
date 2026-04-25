@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Абонементы{% endblock %}
+{% block topbar_title %}Абонементы{% endblock %}
+{% block topbar_actions %}
+  <form method="POST" action="{{ url_for('delete_cancelled_subscriptions') }}" style="display:inline;" onsubmit="return confirm('Удалить все аннулированные абонементы?')">
+    <button type="submit" class="btn btn-secondary">Очистить аннулированные</button>
+  </form>
+  <a href="{{ url_for('add_subscription') }}" class="btn btn-primary">+ Оформить абонемент</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  {% if subscriptions %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Клиент</th><th>Тип</th><th>Группа</th><th>Осталось занятий</th><th>Действует до</th><th>Цена</th><th>Оплата</th><th>Статус</th></tr>
+      </thead>
+      <tbody>
+        {% for s in subscriptions %}
+        <tr>
+          <td><a href="{{ url_for('client_detail', id=s.client_id) }}">{{ s.client_name }}</a></td>
+          <td>{{ s.type_name }}</td>
+          <td>{{ s.group_name or '—' }}</td>
+          <td>
+            <span style="color:var(--accent); font-weight:600">{{ s.lessons_left }}</span>
+            <span style="color:var(--muted)">/{{ s.lessons_total }}</span>
+          </td>
+          <td>{{ s.end_date }}</td>
+          <td>{{ "%.0f"|format(s.price_paid) }} ₽</td>
+          <td>
+            {% if s.payment_method == 'card' %}
+              <span class="badge badge-blue">Безнал</span>
+            {% elif s.payment_method == 'mixed' %}
+              <span class="badge badge-yellow">Смешанная</span>
+            {% else %}
+              <span class="badge badge-gold">Нал</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.status == 'active' %}
+              <span class="badge badge-green">Активен</span>
+            {% elif s.status == 'used' %}
+              <span class="badge badge-yellow">Использован</span>
+            {% elif s.status == 'inactive' %}
+              <span class="badge badge-blue">Не активирован</span>
+            {% else %}
+              <span class="badge badge-red">Отменён</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="icon">🎫</div><p>Абонементов пока нет</p></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Редактировать' if type else 'Добавить' }} тип абонемента{% endblock %}
+{% block topbar_title %}{{ 'Редактировать' if type else 'Добавить' }} тип абонемента{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 640px">
+  <form method="POST">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Название абонемента</label>
+        <input type="text" name="name" value="{{ type.name if type else '' }}" required placeholder="Напр.: Стандарт 8 занятий">
+      </div>
+      <div class="form-group">
+        <label>Количество занятий</label>
+        <input type="number" name="lessons_count" value="{{ type.lessons_count if type else '' }}" required min="1">
+      </div>
+      <div class="form-group">
+        <label>Цена (₽)</label>
+        <input type="number" name="price" value="{{ type.price if type else '' }}" required min="0" step="50" placeholder="3200">
+      </div>
+      <div class="form-group">
+        <label>Срок действия (дней)</label>
+        <input type="number" name="validity_days" value="{{ type.validity_days if type else 28 }}" required min="1">
+      </div>
+      <div class="form-group" style="justify-content: flex-end; padding-bottom: 4px">
+        <label class="checkbox-label">
+          <input type="checkbox" name="carry_over" {{ 'checked' if type and type.carry_over }}>
+          Сохранять пропущенные занятия
+        </label>
+      </div>
+      <div class="form-group full">
+        <label>Описание (необязательно)</label>
+        <textarea name="description">{{ type.description if type else '' }}</textarea>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{{ 'Сохранить' if type else 'Создать' }}</button>
+      <a href="{{ url_for('subscription_types') }}" class="btn btn-secondary">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

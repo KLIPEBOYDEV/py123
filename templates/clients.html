@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Клиенты{% endblock %}
+{% block topbar_title %}Клиенты{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('add_client') }}" class="btn btn-primary">+ Добавить клиента</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div style="margin-bottom:16px">
+    <form method="GET" style="display:flex; gap:10px">
+      <input type="text" name="search" value="{{ search }}" placeholder="Поиск по имени или телефону..." style="max-width:320px">
+      <button type="submit" class="btn btn-secondary">Найти</button>
+      {% if search %}<a href="{{ url_for('clients') }}" class="btn btn-secondary">✕ Сбросить</a>{% endif %}
+    </form>
+  </div>
+
+  {% if clients %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Имя</th><th>Телефон</th><th>Email</th><th>Дата рождения</th><th>Родитель</th><th>Действия</th></tr>
+      </thead>
+      <tbody>
+        {% for c in clients %}
+        <tr>
+          <td><a href="{{ url_for('client_detail', id=c.id) }}" style="font-weight:600">{{ c.name }}</a></td>
+          <td>{{ c.phone or '—' }}</td>
+          <td>{{ c.email or '—' }}</td>
+          <td>{{ c.birthdate or '—' }}</td>
+          <td>{{ c.parent_name or '—' }}</td>
+          <td>
+            <div style="display:flex; gap:6px">
+              <a href="{{ url_for('client_detail', id=c.id) }}" class="btn btn-secondary btn-sm">Открыть</a>
+              <a href="{{ url_for('edit_client', id=c.id) }}" class="btn btn-secondary btn-sm">Изменить</a>
+              <form method="POST" action="{{ url_for('delete_client', id=c.id) }}" onsubmit="return confirm('Удалить клиента?')">
+                <button class="btn btn-danger btn-sm">Удалить</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">👤</div>
+    {% if search %}
+      <p>Ничего не найдено по запросу "{{ search }}"</p>
+    {% else %}
+      <p>Клиентов пока нет. <a href="{{ url_for('add_client') }}">Добавить первого</a></p>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

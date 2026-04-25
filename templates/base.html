@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}XLab Dance studio{% endblock %} — Управление</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141418;
+    --surface2: #1c1c22;
+    --border: #2a2a35;
+    --accent: #c8a96e;
+    --accent2: #e8c88a;
+    --text: #e8e4dc;
+    --muted: #7a7a8a;
+    --danger: #e05555;
+    --success: #5cb87a;
+    --warning: #e0a055;
+    --info: #5599e0;
+    --sidebar-w: 240px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Jost', sans-serif; font-weight: 400; min-height: 100vh; display: flex; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: var(--sidebar-w); min-height: 100vh; background: var(--surface);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; z-index: 100;
+  }
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px; font-weight: 700; color: var(--accent);
+    letter-spacing: 0.02em; line-height: 1.2;
+  }
+  .sidebar-logo p { font-size: 11px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 4px; }
+  .nav { flex: 1; padding: 16px 0; overflow-y: auto; max-height: calc(100vh - 200px); }
+  .nav-section { padding: 8px 24px 4px; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+  .nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 24px; color: var(--muted); text-decoration: none;
+    font-size: 14px; font-weight: 400; transition: all 0.2s;
+    border-left: 2px solid transparent;
+  }
+  .nav a:hover, .nav a.active {
+    color: var(--text); background: var(--surface2);
+    border-left-color: var(--accent);
+  }
+  .nav a .icon { width: 18px; text-align: center; font-size: 15px; }
+  .sidebar-user {
+    padding: 16px 24px; border-top: 1px solid var(--border);
+    font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 10px;
+  }
+  .sidebar-user .avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--bg); font-weight: 700; font-size: 13px;
+  }
+  .sidebar-user a { color: var(--danger); text-decoration: none; font-size: 12px; }
+
+  /* MAIN */
+  .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; }
+  .topbar {
+    padding: 20px 36px; border-bottom: 1px solid var(--border);
+    background: var(--surface); display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar h2 { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 600; color: var(--text); }
+  .content { padding: 32px 36px; }
+
+  /* ALERTS */
+  .flash { padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; border-left: 3px solid; }
+  .flash.success { background: rgba(92,184,122,0.1); border-color: var(--success); color: var(--success); }
+  .flash.error { background: rgba(224,85,85,0.1); border-color: var(--danger); color: var(--danger); }
+  .flash.warning { background: rgba(224,160,85,0.1); border-color: var(--warning); color: var(--warning); }
+  .flash.info { background: rgba(85,153,224,0.1); border-color: var(--info); color: var(--info); }
+
+  /* CARDS */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 24px;
+  }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .card-title { font-family: 'Playfair Display', serif; font-size: 17px; color: var(--text); }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px 24px; display: flex; align-items: center; gap: 16px;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--accent); }
+  .stat-icon { width: 44px; height: 44px; border-radius: 10px; background: rgba(200,169,110,0.12); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .stat-value { font-size: 28px; font-weight: 600; color: var(--accent); line-height: 1; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+  td { padding: 12px 14px; font-size: 14px; border-bottom: 1px solid rgba(42,42,53,0.6); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; font-family: 'Jost', sans-serif;
+  }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: rgba(224,85,85,0.15); color: var(--danger); border: 1px solid rgba(224,85,85,0.3); }
+  .btn-danger:hover { background: rgba(224,85,85,0.25); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-icon { padding: 6px 8px; }
+
+  /* FORMS */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  input, select, textarea {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 10px 12px; font-size: 14px; font-family: 'Jost', sans-serif;
+    transition: border-color 0.2s; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  .form-actions { display: flex; gap: 10px; margin-top: 8px; }
+  .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--text); }
+  .checkbox-label input[type=checkbox] { width: auto; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: rgba(92,184,122,0.15); color: var(--success); }
+  .badge-red { background: rgba(224,85,85,0.15); color: var(--danger); }
+  .badge-yellow { background: rgba(224,160,85,0.15); color: var(--warning); }
+  .badge-blue { background: rgba(85,153,224,0.15); color: var(--info); }
+  .badge-gold { background: rgba(200,169,110,0.15); color: var(--accent); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 100%; max-width: 500px; }
+  .modal h3 { font-family: 'Playfair Display', serif; font-size: 18px; margin-bottom: 20px; }
+
+  /* MISC */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .page-title { font-family: 'Playfair Display', serif; font-size: 26px; color: var(--text); }
+  .empty-state { text-align: center; padding: 48px; color: var(--muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .tag { display: inline-block; padding: 2px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; color: var(--muted); }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent2); }
+
+  /* RESPONSIVE */
+  @media (max-width: 1024px) {
+    body { display: block; }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      min-height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      z-index: 120;
+    }
+    .sidebar-logo { padding: 12px 14px; }
+    .sidebar-logo h1 { font-size: 18px; line-height: 1.1; }
+    .sidebar-logo p { font-size: 10px; }
+    .nav {
+      max-height: none;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-section { display: none; }
+    .nav a {
+      display: inline-flex;
+      border-left: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      flex: 0 0 auto;
+      background: transparent;
+    }
+    .nav a:hover, .nav a.active {
+      border-left: 1px solid var(--accent);
+      border-color: var(--accent);
+      background: var(--surface2);
+    }
+    .sidebar-user {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+    }
+    .main {
+      margin-left: 0;
+      min-height: auto;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .topbar {
+      padding: 12px 14px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .topbar h2 { font-size: 20px; }
+    .topbar > div {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .content { padding: 14px; }
+    .card { padding: 14px; }
+    .card-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-card { padding: 14px; }
+    .stat-value { font-size: 24px; }
+    .form-grid { grid-template-columns: 1fr; gap: 12px; }
+    .form-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .form-actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+    .btn {
+      min-height: 40px;
+      font-size: 14px;
+    }
+    .table-wrap { margin: 0 -6px; }
+    table { min-width: 640px; }
+    th, td { padding: 9px 10px; font-size: 13px; }
+    .modal-overlay { padding: 10px; align-items: flex-start; }
+    .modal {
+      max-width: 100%;
+      max-height: calc(100vh - 20px);
+      overflow: auto;
+      padding: 16px;
+      margin-top: 0;
+    }
+    .empty-state { padding: 24px 10px; }
+  }
+
+  @media (max-width: 520px) {
+    .sidebar-user { display: none; }
+    .sidebar-logo h1 { font-size: 16px; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .topbar h2 { font-size: 18px; }
+    .btn { padding: 8px 12px; }
+  }
+</style>
+{% block extra_styles %}{% endblock %}
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>XLab Dance<br>Studio</h1>
+    <p>Управление студией</p>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Главная</div>
+    <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">
+      <span class="icon">🏠</span> Дашборд
+    </a>
+    {% if session.role == 'admin' %}
+    <a href="{{ url_for('analytics') }}" class="{{ 'active' if request.endpoint == 'analytics' }}">
+      <span class="icon">📊</span> Аналитика
+    </a>
+    {% endif %}
+
+    {% if session.role == 'admin' %}
+    <div class="nav-section">Учёт</div>
+    <a href="{{ url_for('clients') }}" class="{{ 'active' if 'client' in request.endpoint }}">
+      <span class="icon">👤</span> Клиенты
+    </a>
+    <a href="{{ url_for('subscriptions') }}" class="{{ 'active' if 'subscription' in request.endpoint and request.endpoint != 'subscription_types' }}">
+      <span class="icon">🎫</span> Абонементы
+    </a>
+    {% endif %}
+
+    <div class="nav-section">Занятия</div>
+    {% if session.role == 'admin' %}
+    <a href="{{ url_for('groups') }}" class="{{ 'active' if 'group' in request.endpoint }}">
+      <span class="icon">👥</span> Группы
+    </a>
+    {% endif %}
+    {% if session.role == 'admin' %}
+    <a href="{{ url_for('trainers') }}" class="{{ 'active' if 'trainer' in request.endpoint }}">
+      <span class="icon">🎓</span> Тренеры
+    </a>
+    {% endif %}
+    <a href="{{ url_for('schedule') }}" class="{{ 'active' if 'schedule' in request.endpoint or 'attendance' in request.endpoint }}">
+      <span class="icon">📅</span> Расписание
+    </a>
+
+    {% if session.role == 'admin' %}
+    <div class="nav-section">Настройки</div>
+    <a href="{{ url_for('subscription_types') }}" class="{{ 'active' if request.endpoint == 'subscription_types' }}">
+      <span class="icon">⚙️</span> Типы абонементов
+    </a>
+    <a href="{{ url_for('accounts') }}" class="{{ 'active' if 'account' in request.endpoint }}">
+      <span class="icon">🔐</span> Логины и пароли
+    </a>
+    {% endif %}
+  </nav>
+  <div class="sidebar-user">
+    <div class="avatar">{{ session.user_name[0] if session.user_name }}</div>
+    <div>
+      <div style="color: var(--text); font-size: 13px;">{{ session.user_name }}</div>
+      <div style="font-size: 11px; color: var(--muted);">{{ 'Администратор' if session.role == 'admin' else 'Тренер' }}</div>
+      <a href="{{ url_for('logout') }}">Выйти</a>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <h2>{% block topbar_title %}{% endblock %}</h2>
+    <div>{% block topbar_actions %}{% endblock %}</div>
+  </div>
+  <div class="content">
+    {% for category, message in get_flashed_messages(with_categories=True) %}
+      <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

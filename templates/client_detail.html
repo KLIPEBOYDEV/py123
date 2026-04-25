@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block topbar_title %}{{ client.name }}{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('edit_client', id=client.id) }}" class="btn btn-secondary">Изменить</a>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid; grid-template-columns: 2fr 1fr; gap: 20px">
+  <div>
+    <!-- Subscriptions -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🎫 Абонементы</div>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('add-sub-modal').classList.add('open')">+ Оформить</button>
+      </div>
+      {% if subscriptions %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Тип</th><th>Группа</th><th>Занятий</th><th>Действует до</th><th>Статус</th><th></th></tr></thead>
+          <tbody>
+            {% for s in subscriptions %}
+            <tr>
+              <td>{{ s.type_name }}</td>
+              <td>{{ s.group_name or '—' }}</td>
+              <td>
+                <span style="color:var(--accent); font-weight:600">{{ s.lessons_left }}</span>
+                <span style="color:var(--muted)">/{{ s.lessons_total }}</span>
+              </td>
+              <td>{{ s.end_date }}</td>
+              <td>
+                {% if s.status == 'active' %}
+                  <span class="badge badge-green">Активен</span>
+                {% elif s.status == 'used' %}
+                  <span class="badge badge-yellow">Использован</span>
+                {% elif s.status == 'inactive' %}
+                  <span class="badge badge-blue">Не активирован</span>
+                {% else %}
+                  <span class="badge badge-red">Отменён</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if s.status == 'active' %}
+                <form method="POST" action="{{ url_for('cancel_subscription', id=s.id) }}" onsubmit="return confirm('Аннулировать абонемент?')">
+                  <button class="btn btn-danger btn-sm">Аннулировать</button>
+                </form>
+                {% elif s.status == 'inactive' %}
+                <form method="POST" action="{{ url_for('activate_subscription', id=s.id) }}" onsubmit="return confirm('Активировать абонемент на выбранную дату?')">
+                  <input type="date" name="activation_date" value="{{ s.start_date }}" style="margin-bottom:6px; width:150px;">
+                  <button class="btn btn-secondary btn-sm">Активировать</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state"><div class="icon">🎫</div><p>Абонементов нет</p></div>
+      {% endif %}
+    </div>
+
+    {% if cancelled_subscriptions %}
+    <div class="card" style="margin-top:20px">
+      <div class="card-title" style="margin-bottom:12px">🗑 Аннулированные абонементы</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Тип</th><th>Группа</th><th>Занятий</th><th>Дата окончания</th><th></th></tr></thead>
+          <tbody>
+            {% for s in cancelled_subscriptions %}
+            <tr>
+              <td>{{ s.type_name }}</td>
+              <td>{{ s.group_name or '—' }}</td>
+              <td>{{ s.lessons_left }}/{{ s.lessons_total }}</td>
+              <td>{{ s.end_date }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('delete_subscription', id=s.id) }}" onsubmit="return confirm('Удалить безвозвратно? Восстановить нельзя.')">
+                  <button class="btn btn-danger btn-sm">Удалить безвозвратно</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Groups -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title" style="margin-bottom:16px">👥 Группы</div>
+      {% if groups %}
+      <div style="display:flex; flex-wrap:wrap; gap:10px">
+        {% for g in groups %}
+        <a href="{{ url_for('group_detail', id=g.id) }}" style="display:flex; flex-direction:column; gap:2px; padding:12px 16px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; text-decoration:none; transition: border-color .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <span style="font-weight:600; color:var(--text)">{{ g.name }}</span>
+          <span style="font-size:12px; color:var(--muted)">{{ g.trainer_name or 'Тренер не назначен' }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state"><div class="icon">👥</div><p>Не состоит ни в одной группе</p></div>
+      {% endif %}
+    </div>
+
+    <!-- Children -->
+    {% if children %}
+    <div class="card" style="margin-top:20px">
+      <div class="card-title" style="margin-bottom:16px">👶 Дети / подопечные</div>
+      <div style="display:flex; flex-wrap:wrap; gap:10px">
+        {% for ch in children %}
+        <a href="{{ url_for('client_detail', id=ch.id) }}" style="padding:10px 16px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; text-decoration:none; color:var(--text); font-weight:500">
+          {{ ch.name }} {% if ch.birthdate %}<span style="color:var(--muted); font-size:12px">({{ ch.birthdate }})</span>{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Info sidebar -->
+  <div class="card" style="height:fit-content">
+    <div class="card-title" style="margin-bottom:16px">Информация</div>
+    <div style="display:flex; flex-direction:column; gap:14px">
+      {% if client.phone %}
+      <div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Телефон</div>
+        <div>{{ client.phone }}</div>
+      </div>
+      {% endif %}
+      {% if client.email %}
+      <div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Email</div>
+        <div>{{ client.email }}</div>
+      </div>
+      {% endif %}
+      {% if client.birthdate %}
+      <div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Дата рождения</div>
+        <div>{{ client.birthdate }}</div>
+      </div>
+      {% endif %}
+      {% if client.parent_name %}
+      <div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Родитель</div>
+        <a href="#" style="color:var(--accent)">{{ client.parent_name }}</a>
+        {% if client.parent_phone %}<div style="font-size:12px; color:var(--muted)">{{ client.parent_phone }}</div>{% endif %}
+      </div>
+      {% endif %}
+      {% if client.notes %}
+      <div>
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Заметки</div>
+        <div style="font-size:13px; color:var(--muted)">{{ client.notes }}</div>
+      </div>
+      {% endif %}
+      <div style="margin-top:8px">
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px">Добавлен</div>
+        <div style="font-size:13px; color:var(--muted)">{{ client.created_at }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: add subscription -->
+<div class="modal-overlay" id="add-sub-modal">
+  <div class="modal" style="max-width:520px">
+    <h3>Оформить абонемент</h3>
+    <form method="POST" action="{{ url_for('add_subscription_for_client', client_id=client.id) }}">
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Тип абонемента *</label>
+        <select name="type_id" required id="sub-type-select">
+          <option value="">— Выберите —</option>
+          {% for t in sub_types %}
+          <option value="{{ t.id }}" data-price="{{ t.price|int }}" data-lessons="{{ t.lessons_count }}" data-days="{{ t.validity_days }}" data-carry="{{ t.carry_over }}">
+            {{ t.name }} — {{ t.price|int }} ₽
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div id="sub-info" style="display:none; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:14px; font-size:13px; color:var(--muted)"></div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Группа</label>
+        <select name="group_id">
+          <option value="">— Разовое / без группы —</option>
+          {% for g in groups_all %}
+          <option value="{{ g.id }}">{{ g.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Способ оплаты *</label>
+        <select name="payment_method" required>
+          <option value="cash">Наличные</option>
+          <option value="card">Безнал</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Дата активации</label>
+        <input type="date" name="activation_date" id="client-sub-activation-date">
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="checkbox-label" style="text-transform:none; letter-spacing:normal; color:var(--text);">
+          <input type="checkbox" name="activate_now" value="1" checked>
+          Активировать абонемент сразу
+        </label>
+      </div>
+      <div style="display:flex; gap:10px">
+        <button type="submit" class="btn btn-primary">Оформить</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-sub-modal').classList.remove('open')">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('sub-type-select').addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  const info = document.getElementById('sub-info');
+  if (!opt.value) { info.style.display = 'none'; return; }
+  info.style.display = 'block';
+  const carry = opt.dataset.carry == '1' ? '✓ Сохраняются' : '✗ Не сохраняются';
+  info.innerHTML = `<strong style="color:var(--accent)">${opt.dataset.lessons} занятий</strong> · 
+    Срок: <strong>${opt.dataset.days} дней</strong> · 
+    Пропуски: ${carry} · 
+    Цена: <strong style="color:var(--accent)">${opt.dataset.price} ₽</strong>`;
+});
+const clientActivationInput = document.getElementById('client-sub-activation-date');
+if (clientActivationInput && !clientActivationInput.value) {
+  clientActivationInput.value = new Date().toISOString().slice(0, 10);
+}
+</script>
+{% endblock %}

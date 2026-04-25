@@ -1,0 +1,100 @@
+
+{% extends "base.html" %}
+
+{% block title %}Продажа абонемента{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h3>Продажа абонемента для {{ client.name }}</h3>
+  <form method="POST">
+    <div class="form-group">
+      <label>Тип абонемента *</label>
+      <select name="subscription_type" id="subscription_type" required>
+        <option value="">— Выберите —</option>
+        {% for st in subscription_types %}
+        <option value="{{ st.id }}" data-price="{{ st.price }}">{{ st.name }} — {{ st.price|int }} ₽</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Базовая цена</label>
+      <input type="number" id="base_price" readonly>
+    </div>
+    <div class="form-group">
+      <label>Скидка (%)</label>
+      <input type="number" name="discount_percent" id="discount_percent" min="0" max="100" step="0.1" value="0">
+    </div>
+    <div class="form-group">
+      <label>Итог к оплате</label>
+      <input type="number" id="final_price" readonly>
+    </div>
+    <div class="form-group">
+      <label>Способ оплаты *</label>
+      <select name="payment_option" id="payment_option" required>
+        <option value="cash">Наличные</option>
+        <option value="card">Безналичные</option>
+        <option value="mixed">Разделить (нал + безнал)</option>
+      </select>
+    </div>
+    <div id="split_payment_block" style="display:none;">
+      <div class="form-group">
+        <label>Сумма (нал)</label>
+        <input type="number" name="cash_amount" id="cash_amount" min="0" step="1" value="0">
+      </div>
+      <div class="form-group">
+        <label>Сумма (безнал)</label>
+        <input type="number" name="non_cash_amount" id="non_cash_amount" min="0" step="1" value="0">
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <button type="submit" class="btn btn-primary">Продать</button>
+      <a href="{{ url_for('schedule') }}" class="btn btn-secondary">Отмена</a>
+    </div>
+  </form>
+</div>
+<script>
+  const typeSelect = document.getElementById('subscription_type');
+  const discountInput = document.getElementById('discount_percent');
+  const paymentSelect = document.getElementById('payment_option');
+  const splitBlock = document.getElementById('split_payment_block');
+  const basePriceInput = document.getElementById('base_price');
+  const finalPriceInput = document.getElementById('final_price');
+  const cashInput = document.getElementById('cash_amount');
+  const nonCashInput = document.getElementById('non_cash_amount');
+
+  function getBasePrice() {
+    const opt = typeSelect.options[typeSelect.selectedIndex];
+    return opt && opt.dataset.price ? parseFloat(opt.dataset.price) : 0;
+  }
+
+  function recalc() {
+    const basePrice = getBasePrice();
+    let discountPercent = parseFloat(discountInput.value || '0');
+    if (discountPercent < 0) discountPercent = 0;
+    if (discountPercent > 100) discountPercent = 100;
+    const discountAmount = basePrice * (discountPercent / 100);
+    const finalPrice = Math.max(basePrice - discountAmount, 0);
+    basePriceInput.value = basePrice.toFixed(0);
+    finalPriceInput.value = finalPrice.toFixed(0);
+
+    if (paymentSelect.value !== 'mixed') {
+      cashInput.value = paymentSelect.value === 'cash' ? finalPrice.toFixed(0) : '0';
+      nonCashInput.value = paymentSelect.value === 'card' ? finalPrice.toFixed(0) : '0';
+    }
+  }
+
+  function toggleSplitBlock() {
+    splitBlock.style.display = paymentSelect.value === 'mixed' ? 'block' : 'none';
+  }
+
+  typeSelect.addEventListener('change', recalc);
+  discountInput.addEventListener('input', recalc);
+  paymentSelect.addEventListener('change', () => {
+    toggleSplitBlock();
+    recalc();
+  });
+
+  toggleSplitBlock();
+  recalc();
+</script>
+{% endblock %}

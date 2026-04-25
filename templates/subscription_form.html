@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Оформить абонемент{% endblock %}
+{% block topbar_title %}Оформить абонемент{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px">
+  <form method="POST">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Клиент *</label>
+        <select name="client_id" required>
+          <option value="">— Выберите клиента —</option>
+          {% for c in clients %}
+          <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Тип абонемента *</label>
+        <select name="type_id" required id="type-sel">
+          <option value="">— Выберите тип —</option>
+          {% for t in sub_types %}
+          <option value="{{ t.id }}" data-price="{{ t.price }}" data-lessons="{{ t.lessons_count }}" data-days="{{ t.validity_days }}">
+            {{ t.name }} — {{ t.price|int }} ₽ · {{ t.lessons_count }} занятий · {{ t.validity_days }} дней
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Группа</label>
+        <select name="group_id">
+          <option value="">— Без группы —</option>
+          {% for g in groups %}
+          <option value="{{ g.id }}">{{ g.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Дата начала</label>
+        <input type="date" name="start_date">
+      </div>
+      <div class="form-group">
+        <label>Дата активации</label>
+        <input type="date" name="activation_date">
+      </div>
+      <div class="form-group">
+        <label>Фактически оплачено (₽)</label>
+        <input type="number" name="price_paid" id="price-paid" step="50" min="0" placeholder="Заполнится автоматически">
+      </div>
+      <div class="form-group">
+        <label>Способ оплаты *</label>
+        <select name="payment_method" id="payment-method" required>
+          <option value="cash">Наличные</option>
+          <option value="card">Безнал</option>
+          <option value="mixed">Разделение (нал + безнал)</option>
+        </select>
+      </div>
+      <div class="form-group" id="cash-amount-wrap" style="display:none;">
+        <label>Наличными (₽)</label>
+        <input type="number" name="cash_amount" id="cash-amount" min="0" step="1" value="0">
+      </div>
+      <div class="form-group" id="non-cash-amount-wrap" style="display:none;">
+        <label>Безналом (₽)</label>
+        <input type="number" name="non_cash_amount" id="non-cash-amount" min="0" step="1" value="0">
+      </div>
+      <div class="form-group full">
+        <label class="checkbox-label" style="text-transform:none; letter-spacing:normal; color:var(--text);">
+          <input type="checkbox" name="activate_now" value="1" checked>
+          Активировать абонемент сразу
+        </label>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Оформить</button>
+      <a href="{{ url_for('subscriptions') }}" class="btn btn-secondary">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const typeSel = document.getElementById('type-sel');
+const pricePaidInput = document.getElementById('price-paid');
+const paymentMethodSel = document.getElementById('payment-method');
+const cashWrap = document.getElementById('cash-amount-wrap');
+const nonCashWrap = document.getElementById('non-cash-amount-wrap');
+const cashAmountInput = document.getElementById('cash-amount');
+const nonCashAmountInput = document.getElementById('non-cash-amount');
+
+function getPricePaid() {
+  const value = parseFloat(pricePaidInput.value || '0');
+  return value < 0 ? 0 : value;
+}
+
+function syncSplitPaymentFields() {
+  const amount = getPricePaid();
+  const method = paymentMethodSel.value;
+  const isMixed = method === 'mixed';
+  cashWrap.style.display = isMixed ? '' : 'none';
+  nonCashWrap.style.display = isMixed ? '' : 'none';
+
+  if (!isMixed) {
+    cashAmountInput.value = method === 'cash' ? amount.toFixed(0) : '0';
+    nonCashAmountInput.value = method === 'card' ? amount.toFixed(0) : '0';
+  }
+}
+
+typeSel.addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  if (opt.value) {
+    pricePaidInput.value = opt.dataset.price;
+    syncSplitPaymentFields();
+  }
+});
+pricePaidInput.addEventListener('input', syncSplitPaymentFields);
+paymentMethodSel.addEventListener('change', syncSplitPaymentFields);
+
+const activationInput = document.querySelector('input[name="activation_date"]');
+if (activationInput && !activationInput.value) {
+  activationInput.value = new Date().toISOString().slice(0, 10);
+}
+syncSplitPaymentFields();
+</script>
+{% endblock %}

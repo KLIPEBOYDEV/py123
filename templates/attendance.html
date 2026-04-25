@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Посещаемость{% endblock %}
+{% block topbar_title %}Посещаемость{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('schedule') }}" class="btn btn-secondary">← К расписанию</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 20px;">
+  <div class="card-title" style="margin-bottom: 10px;">{{ lesson.group_name }}</div>
+  <div style="color: var(--muted); font-size: 14px;">
+    {{ lesson.date }} в {{ lesson.time }}
+  </div>
+</div>
+
+<div class="card">
+  <form method="POST" action="{{ url_for('mark_attendance', schedule_id=lesson.id) }}">
+    {% if members %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Клиент</th>
+            <th style="width: 260px;">Абонемент</th>
+            <th style="width: 180px;">Присутствие</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in members %}
+          <tr>
+            <td>
+              {{ m.name }}
+              <a href="{{ url_for('sell_subscription', client_id=m.id) }}" class="btn btn-link btn-sm" style="margin-left:8px; font-size:12px;">Продать абонемент</a>
+            </td>
+            <td>
+              {% set sub_info = subscription_info_by_client[m.id] %}
+              {% if sub_info %}
+                <span class="badge badge-gold">{{ sub_info.lessons_left }}</span>
+                <div style="color: var(--muted); font-size: 12px; margin-top: 4px;">
+                  Активен · {{ sub_info.type_name }} · до {{ sub_info.end_date }}
+                </div>
+                <div style="color: var(--muted); font-size: 12px; margin-top: 2px;">
+                  {% if sub_info.carry_over == 0 %}
+                    Стандарт: списание по календарю, независимо от отметки
+                  {% else %}
+                    Стандарт+: списание только по отметке посещаемости
+                  {% endif %}
+                </div>
+              {% else %}
+                <span style="color: var(--muted);">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <label class="checkbox-label" style="text-transform:none; letter-spacing:normal; color:var(--text);">
+                <input type="checkbox" name="present" value="{{ m.id }}" {{ 'checked' if m.id in attended }}>
+                Был(а) на занятии
+              </label>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="form-actions" style="margin-top: 18px;">
+      <button type="submit" class="btn btn-primary">Сохранить посещаемость</button>
+      <a href="{{ url_for('schedule') }}" class="btn btn-secondary">Отмена</a>
+    </div>
+    <div style="color: var(--muted); font-size: 12px; margin-top: 10px;">
+      Стандарт списывается автоматически по дате занятия. Стандарт+ списывается только если клиент отмечен как присутствующий.
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">👥</div>
+      <p>В этой группе пока нет клиентов для отметки посещаемости.</p>
+    </div>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}

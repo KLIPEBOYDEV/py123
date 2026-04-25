@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Редактировать интенсив{% endblock %}
+{% block topbar_title %}Редактировать интенсив{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 980px;">
+  <form method="POST">
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+      <div class="form-group">
+        <label>Дата *</label>
+        <input type="date" name="date" value="{{ intensive.date }}" required>
+      </div>
+      <div class="form-group">
+        <label>Время *</label>
+        <input type="time" name="time" value="{{ intensive.time }}" required>
+      </div>
+      <div class="form-group">
+        <label>Тренер *</label>
+        <select name="trainer_id" required>
+          <option value="">— Выберите —</option>
+          {% for t in trainers %}
+          <option value="{{ t.id }}" {{ 'selected' if intensive.trainer_id == t.id else '' }}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top:12px;">
+      <label>Участники и оплата</label>
+      {% for p in participants %}
+      <div style="border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:10px;">
+        <div style="font-weight:600; margin-bottom:8px;">
+          {{ p.client_name }}
+          <input type="hidden" name="client_ids" value="{{ p.client_id }}">
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 2fr; gap:8px;">
+          <div>
+            <label style="font-size:10px;">Оплата</label>
+            <select name="payment_type_{{ p.client_id }}" onchange="toggleEditRow('{{ p.client_id }}', this.value)">
+              <option value="cash" {{ 'selected' if p.payment_type == 'cash' else '' }}>Деньгами</option>
+              <option value="subscription" {{ 'selected' if p.payment_type == 'subscription' else '' }}>С абонемента</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:10px;">Способ</label>
+            <select name="payment_method_{{ p.client_id }}" id="edit-method-{{ p.client_id }}">
+              <option value="cash" {{ 'selected' if p.payment_method == 'cash' else '' }}>Нал</option>
+              <option value="card" {{ 'selected' if p.payment_method == 'card' else '' }}>Безнал</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:10px;">Часы</label>
+            <input type="number" name="hours_{{ p.client_id }}" min="0.5" step="0.5" value="{{ p.hours }}">
+          </div>
+          <div id="edit-sub-wrap-{{ p.client_id }}" style="{{ 'display:none;' if p.payment_type != 'subscription' else '' }}">
+            <label style="font-size:10px;">Абонемент / списать</label>
+            <div style="display:flex; gap:6px;">
+              <select name="subscription_id_{{ p.client_id }}">
+                <option value="">— Выберите —</option>
+                {% for s in active_subscriptions %}
+                  {% if s.client_id == p.client_id %}
+                  <option value="{{ s.id }}" {{ 'selected' if p.subscription_id == s.id else '' }}>
+                    {{ s.type_name }} (ост.: {{ s.lessons_left }}, до {{ s.end_date }})
+                  </option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+              <input type="number" name="lessons_to_write_off_{{ p.client_id }}" min="1" step="1" value="{{ p.lessons_written_off or 1 }}" style="max-width:70px;">
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      <label>Комментарий</label>
+      <input type="text" name="notes" value="{{ intensive.notes or '' }}">
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:16px;">
+      <button class="btn btn-primary" type="submit">Сохранить</button>
+      <a class="btn btn-secondary" href="{{ url_for('schedule') }}">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleEditRow(clientId, mode) {
+  const wrap = document.getElementById(`edit-sub-wrap-${clientId}`);
+  const method = document.getElementById(`edit-method-${clientId}`);
+  wrap.style.display = mode === 'subscription' ? 'block' : 'none';
+  method.disabled = mode === 'subscription';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Редактировать' if group else 'Создать' }} группу{% endblock %}
+{% block topbar_title %}{{ 'Редактировать' if group else 'Создать' }} группу{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 640px">
+  <form method="POST">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Название группы *</label>
+        <input type="text" name="name" value="{{ group.name if group else '' }}" required placeholder="Напр.: Хип-хоп Junior">
+      </div>
+      <div class="form-group full">
+        <label>Тренер</label>
+        <select name="trainer_id">
+          <option value="">— Не назначен —</option>
+          {% for t in trainers %}
+          <option value="{{ t.id }}" {{ 'selected' if group and group.trainer_id == t.id }}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Доп. тренеры (можно несколько)</label>
+        <div style="max-height:160px; overflow:auto; border:1px solid var(--border); border-radius:6px; padding:10px; background:var(--surface2)">
+          {% set selected_ids = selected_trainer_ids if selected_trainer_ids is defined else [] %}
+          {% for t in trainers %}
+          <label class="checkbox-label" style="margin-bottom:6px; display:flex;">
+            <input type="checkbox" name="trainer_ids" value="{{ t.id }}" {{ 'checked' if (t.id in selected_ids) else '' }}>
+            {{ t.name }}
+          </label>
+          {% endfor %}
+        </div>
+        <div style="color:var(--muted); font-size:12px; margin-top:6px;">
+          Используется, если занятие ведут несколько тренеров. Основной тренер остаётся в поле выше.
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Возрастная группа</label>
+        <input type="text" name="age_range" value="{{ group.age_range if group else '' }}" placeholder="6-10 лет">
+      </div>
+      <div class="form-group">
+        <label>Уровень</label>
+        <input type="text" name="level" value="{{ group.level if group else '' }}" placeholder="Начинающие / Средний / Продвинутый">
+      </div>
+      <div class="form-group">
+        <label>Макс. кол-во участников</label>
+        <input type="number" name="max_capacity" value="{{ group.max_capacity if group else 20 }}" min="1">
+      </div>
+      <div class="form-group full">
+        <label>Описание</label>
+        <textarea name="description">{{ group.description if group else '' }}</textarea>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{{ 'Сохранить' if group else 'Создать' }}</button>
+      <a href="{{ url_for('groups') }}" class="btn btn-secondary">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

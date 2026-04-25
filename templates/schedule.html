@@ -1,0 +1,661 @@
+{% extends "base.html" %}
+{% block title %}Расписание{% endblock %}
+{% block topbar_title %}Расписание{% endblock %}
+
+{% block extra_styles %}
+<style>
+.week-nav { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.week-nav span { font-size:15px; font-weight:500; color:var(--text); min-width:180px; text-align:center; }
+.week-nav .add-session-btn { margin-left: auto; }
+.day-col { min-width: 120px; }
+.day-header { 
+  text-align:center; padding:10px 4px; 
+  font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.day-header.today { color: var(--accent); }
+.day-cell { padding:8px; border-right:1px solid var(--border); min-height:60px; vertical-align:top; }
+.session-block {
+  background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius:6px; padding:8px 6px; margin-bottom:6px; font-size:12px;
+  cursor: pointer; transition: background .15s;
+}
+.session-block:hover { background: rgba(200,169,110,0.1); }
+.session-time { font-weight:700; color:var(--accent); font-size:13px; }
+.session-group { color:var(--text); font-weight:500; margin-top:2px; }
+.session-trainer { color:var(--muted); margin-top:1px; }
+.del-actions {
+  display: none;
+  margin-top: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+.del-actions .btn {
+  font-size: 11px;
+  line-height: 1;
+  min-height: 28px;
+  padding: 7px 10px;
+}
+.del-actions form {
+  margin: 0;
+}
+.individual-client-search {
+  margin-bottom: 8px;
+}
+.individual-client-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.individual-client-list {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  background: var(--surface2);
+}
+.individual-client-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.individual-client-option:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
+}
+.individual-client-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+}
+.individual-client-option:has(input[type="radio"]:checked) {
+  background: rgba(200,169,110,0.12);
+  border-color: rgba(200,169,110,0.45);
+}
+.intensive-block {
+  background: rgba(85,153,224,0.12);
+  border: 1px solid rgba(85,153,224,0.35);
+  border-left: 3px solid var(--info);
+  border-radius: 6px;
+  padding: 8px 6px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.schedule-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+.schedule-table td, .schedule-table th { border: 1px solid var(--border); word-break:break-word; }
+@media (max-width: 900px) {
+  .week-nav { flex-direction:column; align-items:stretch; gap:8px; }
+  .week-nav .add-session-btn { margin-left: 0; }
+  .schedule-table, .schedule-table thead, .schedule-table tbody, .schedule-table tr { display:block; width:100%; }
+  .schedule-table thead { display:none; }
+  .schedule-table tr { margin-bottom:16px; }
+  .schedule-table td.day-cell { display:block; width:100%; min-width:0; border-right:none; border-bottom:1px solid var(--border); }
+  .day-header, .day-header.today { font-size:14px; padding:8px 2px; }
+}
+@media (max-width: 600px) {
+  .session-block, .intensive-block { font-size:11px; padding:6px 4px; }
+  .week-nav span { font-size:13px; min-width:120px; }
+  .card { padding:6px !important; }
+  .schedule-table td.day-cell { padding:4px; }
+  .session-time { font-size:12px; }
+  .individual-client-list { max-height: 180px; }
+  .individual-client-option { padding: 7px 8px; font-size: 13px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="week-nav">
+  <a href="{{ url_for('schedule', week=week_offset-1) }}" class="btn btn-secondary">← Пред. неделя</a>
+  <span>
+    {{ days[0].strftime('%d %b') }} — {{ days[6].strftime('%d %b %Y') }}
+  </span>
+  <a href="{{ url_for('schedule', week=week_offset+1) }}" class="btn btn-secondary">След. неделя →</a>
+  {% if week_offset != 0 %}
+  <a href="{{ url_for('schedule', week=0) }}" class="btn btn-secondary btn-sm">Сегодня</a>
+  {% endif %}
+  <button class="btn btn-secondary" onclick="document.getElementById('add-intensive-modal').classList.add('open')">⚡ Интенсив</button>
+  <button class="btn btn-secondary" onclick="document.getElementById('add-individual-modal').classList.add('open')">👤 Индивидуальное</button>
+  <button class="btn btn-primary add-session-btn" onclick="document.getElementById('add-session-modal').classList.add('open')">+ Добавить занятие</button>
+</div>
+
+{% set day_names = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'] %}
+{% set today_str = now_str if now_str else '' %}
+
+<div class="card" style="padding:0; overflow:hidden">
+  <table class="schedule-table">
+    <thead>
+      <tr>
+        {% for d in days %}
+        <th class="day-header {{ 'today' if d.strftime('%Y-%m-%d') == today_str }}">
+          {{ day_names[loop.index0] }}<br>
+          <span style="font-size:16px; font-weight:700; color:inherit">{{ d.strftime('%d') }}</span>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        {% for d in day_strings %}
+        <td class="day-cell">
+          {% for s in schedule_by_day[d] %}
+          <div class="session-block" onclick="toggleDeleteForm('del-{{ s.id }}')">
+            <div class="session-time">{{ s.time }}</div>
+            <div class="session-group">{{ s.group_name }}</div>
+            <div class="session-trainer">{{ s.trainer_name or '—' }}</div>
+            {% if s.room %}<div style="color:var(--muted); font-size:11px">{{ s.room }}</div>{% endif %}
+            <div id="del-{{ s.id }}" class="del-actions">
+              <a href="{{ url_for('attendance_form', id=s.id) }}" class="btn btn-secondary btn-sm">Посещаемость</a>
+              <a href="{{ url_for('edit_schedule', id=s.id, week=week_offset) }}" class="btn btn-secondary btn-sm">Редактировать</a>
+              <form method="POST" action="{{ url_for('delete_schedule', id=s.id) }}" onsubmit="return confirm('Удалить занятие?')">
+                <input type="hidden" name="week_offset" value="{{ week_offset }}">
+                <button class="btn btn-danger btn-sm">Удалить</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+          {% for i in intensives_by_day[d] %}
+          <div class="intensive-block">
+            <div class="session-time">⚡ {{ i.time }} · Интенсив ({{ i.hours }}ч)</div>
+            <div class="session-group">{{ i.group_name or 'Индивидуально' }}</div>
+            <div class="session-trainer">{{ i.trainer_name or '—' }}</div>
+            <div style="color:var(--muted); margin-top:2px">Денежная сумма: {{ "%.0f"|format(i.amount) }} ₽</div>
+            <div style="margin-top:6px; display:flex; gap:6px;">
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('edit_intensive', id=i.id) }}">Изменить</a>
+              <form method="POST" action="{{ url_for('delete_intensive', id=i.id) }}" onsubmit="return confirm('Удалить интенсив?')" style="display:inline;">
+                <input type="hidden" name="week_offset" value="{{ week_offset }}">
+                <button class="btn btn-danger btn-sm" type="submit">Удалить</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </td>
+        {% endfor %}
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Intensive modal -->
+<div class="modal-overlay" id="add-intensive-modal">
+  <div class="modal" style="max-width:780px; max-height:85vh; overflow:auto;">
+    <h3>Добавить интенсив</h3>
+    <form method="POST" action="{{ url_for('add_intensive') }}">
+      <input type="hidden" name="week_offset" value="{{ week_offset }}">
+
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Формат интенсива *</label>
+        <select name="participant_mode" id="participant-mode" onchange="toggleIntensiveParticipantFields()">
+          <option value="clients">Отдельные люди</option>
+          <option value="group">Группа</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom:12px" id="intensive-group-wrap" hidden>
+        <label>Группа *</label>
+        <select name="group_id" onchange="renderParticipantPayments()">
+          <option value="">— Выберите —</option>
+          {% for g in groups %}
+          <option value="{{ g.id }}">{{ g.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div id="intensive-clients-wrap">
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Участники (можно несколько) *</label>
+          <input
+            type="text"
+            id="intensive-client-search"
+            placeholder="Поиск по имени..."
+            oninput="filterIntensiveClients(this.value)"
+            style="margin-bottom:8px;"
+          >
+          <div style="max-height:140px; overflow:auto; border:1px solid var(--border); border-radius:6px; padding:8px">
+            {% for c in clients %}
+            <label
+              class="checkbox-label intensive-client-option"
+              data-client-name="{{ c.name|lower }}"
+              style="margin-bottom:6px; display:flex;"
+            >
+              <input type="checkbox" name="client_ids" value="{{ c.id }}" onchange="renderParticipantPayments()"> {{ c.name }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+        <div class="form-group">
+          <label>Дата *</label>
+          <input type="date" name="date" required>
+        </div>
+        <div class="form-group">
+          <label>Время *</label>
+          <input type="time" name="time" required value="19:00">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px">
+        <label>Тренер *</label>
+        <select name="trainer_id" required>
+          <option value="">— Выберите —</option>
+          {% for t in trainers %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-top:12px">
+        <label>Оплата по каждому участнику</label>
+        <div id="participant-payments" style="border:1px solid var(--border); border-radius:8px; padding:10px;">
+          <div style="color:var(--muted); font-size:13px;">Выберите участников, затем у каждого укажите тип оплаты и часы.</div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px">
+        <label>Часы интенсива *</label>
+        <input type="number" name="hours" min="0.5" step="0.5" value="1" required>
+      </div>
+
+      <div class="form-group" style="margin-top:12px">
+        <label>Комментарий</label>
+        <input type="text" name="notes" placeholder="Необязательно">
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:16px">
+        <button type="submit" class="btn btn-primary">Добавить интенсив</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-intensive-modal').classList.remove('open')">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Individual lesson modal -->
+<div class="modal-overlay" id="add-individual-modal">
+  <div class="modal" style="max-width:640px; max-height:85vh; overflow:auto;">
+    <h3>Добавить индивидуальное занятие</h3>
+    <form method="POST" action="{{ url_for('add_individual_lesson') }}">
+      <input type="hidden" name="week_offset" value="{{ week_offset }}">
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+        <div class="form-group">
+          <label>Дата *</label>
+          <input type="date" name="date" required>
+        </div>
+        <div class="form-group">
+          <label>Время *</label>
+          <input type="time" name="time" required value="19:00">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px">
+        <label>Тренер *</label>
+        <select name="trainer_id" required>
+          <option value="">— Выберите —</option>
+          {% for t in trainers %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-top:12px">
+        <label>Клиент *</label>
+        <input
+          type="text"
+          id="individual-client-search"
+          class="individual-client-search"
+          placeholder="Поиск клиента (минимум 2 буквы)..."
+          oninput="filterIndividualClients(this.value)"
+        >
+        <div id="individual-client-hint" class="individual-client-hint">
+          Начните вводить имя для быстрого поиска.
+        </div>
+        <div id="individual-client-list" class="individual-client-list">
+          {% for c in clients %}
+          <label
+            class="checkbox-label individual-client-option"
+            data-client-name="{{ c.name|lower }}"
+          >
+            <input type="radio" name="client_id" value="{{ c.id }}"> {{ c.name }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px">
+        <div class="form-group">
+          <label>Сумма оплаты (₽) *</label>
+          <input type="number" name="amount" id="individual-amount" min="0" step="1" value="600" required>
+        </div>
+        <div class="form-group">
+          <label>Способ оплаты *</label>
+          <select name="payment_option" id="individual-payment-option" onchange="toggleIndividualPaymentFields()" required>
+            <option value="cash">Наличные</option>
+            <option value="card">Безналичные</option>
+            <option value="mixed">Разделение (нал + безнал)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="individual-split-payment" style="display:none; margin-top:12px; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label>Сумма (нал)</label>
+          <input type="number" name="cash_amount" id="individual-cash-amount" min="0" step="1" value="0">
+        </div>
+        <div class="form-group">
+          <label>Сумма (безнал)</label>
+          <input type="number" name="non_cash_amount" id="individual-non-cash-amount" min="0" step="1" value="0">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px">
+        <label>Комментарий</label>
+        <input type="text" name="notes" placeholder="Необязательно">
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:16px">
+        <button type="submit" class="btn btn-primary">Добавить индивидуальное</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-individual-modal').classList.remove('open')">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add session modal -->
+<div class="modal-overlay" id="add-session-modal">
+  <div class="modal" style="max-width:720px">
+    <h3>Добавить занятие</h3>
+    <form method="POST" action="{{ url_for('add_schedule') }}">
+      <input type="hidden" name="week_offset" value="{{ week_offset }}">
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Режим создания *</label>
+        <select name="schedule_mode" id="schedule-mode" onchange="toggleScheduleMode()">
+          <option value="single">Разовое занятие</option>
+          <option value="recurring">Авторасписание</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Группа *</label>
+        <select name="group_id" required>
+          <option value="">— Выберите —</option>
+          {% for g in groups %}
+          <option value="{{ g.id }}">{{ g.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px" id="single-date-wrap">
+        <div class="form-group">
+          <label>Дата *</label>
+          <input type="date" name="date" required>
+        </div>
+        <div class="form-group">
+          <label>Время *</label>
+          <input type="time" name="time" required value="10:00">
+        </div>
+        <div class="form-group">
+          <label>Длительность (мин)</label>
+          <input type="number" name="duration" value="60" min="15" step="15">
+        </div>
+        <div class="form-group">
+          <label>Зал</label>
+          <input type="text" name="room" placeholder="Зал 1">
+        </div>
+      </div>
+      <div id="recurring-settings-wrap" style="display:none">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+          <div class="form-group">
+            <label>С даты *</label>
+            <input type="date" name="start_date">
+          </div>
+          <div class="form-group">
+            <label>По дату *</label>
+            <input type="date" name="end_date">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:12px">
+          <label>Дни недели *</label>
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:6px">
+            <label class="checkbox-label"><input type="checkbox" name="weekdays" value="0"> Пн</label>
+            <label class="checkbox-label"><input type="checkbox" name="weekdays" value="1"> Вт</label>
+            <label class="checkbox-label"><input type="checkbox" name="weekdays" value="2"> Ср</label>
+            <label class="checkbox-label"><input type="checkbox" name="weekdays" value="3"> Чт</label>
+            <label class="checkbox-label"><input type="checkbox" name="weekdays" value="4"> Пт</label>
+            <label class="checkbox-label"><input type="checkbox" name="weekdays" value="5"> Сб</label>
+            <label class="checkbox-label"><input type="checkbox" name="weekdays" value="6"> Вс</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Заметки</label>
+        <input type="text" name="notes" placeholder="Необязательно">
+      </div>
+      <div style="display:flex; gap:10px; margin-top:16px">
+        <button type="submit" class="btn btn-primary">Добавить</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-session-modal').classList.remove('open')">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleDeleteForm(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
+}
+
+function toggleScheduleMode() {
+  const mode = document.getElementById('schedule-mode').value;
+  const singleWrap = document.getElementById('single-date-wrap');
+  const recurringWrap = document.getElementById('recurring-settings-wrap');
+  const form = document.querySelector('#add-session-modal form');
+  const dateInput = form ? form.querySelector('input[name="date"]') : null;
+  const startDateInput = form ? form.querySelector('input[name="start_date"]') : null;
+  const endDateInput = form ? form.querySelector('input[name="end_date"]') : null;
+  const weekdayInputs = form ? form.querySelectorAll('input[name="weekdays"]') : [];
+
+  const isRecurring = mode === 'recurring';
+  singleWrap.style.display = isRecurring ? 'none' : 'grid';
+  recurringWrap.style.display = isRecurring ? 'block' : 'none';
+  if (dateInput) dateInput.required = !isRecurring;
+  if (startDateInput) startDateInput.required = isRecurring;
+  if (endDateInput) endDateInput.required = isRecurring;
+  weekdayInputs.forEach(el => {
+    el.required = false;
+  });
+}
+
+function toggleIntensivePaymentFields() {
+}
+
+const groupMembersByGroup = JSON.parse('{{ group_members_by_group|tojson|safe }}');
+const subscriptions = JSON.parse('{{ active_subscriptions|tojson|safe }}');
+
+function subscriptionsOptions(clientId) {
+  let options = '<option value="">— Выберите —</option>';
+  subscriptions.filter(s => String(s.client_id) === String(clientId)).forEach(s => {
+    options += `<option value="${s.id}">${s.type_name} (ост.: ${s.lessons_left}, до ${s.end_date})</option>`;
+  });
+  return options;
+}
+
+function paymentRow(clientId, clientName) {
+  return `
+    <div style="border:1px solid var(--border); border-radius:6px; padding:8px; margin-bottom:8px;">
+      <div style="font-weight:600; margin-bottom:8px;">${clientName}<input type="hidden" name="client_ids" value="${clientId}"></div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:8px;">
+        <div>
+          <label style="font-size:10px;">Оплата</label>
+          <select name="payment_type_${clientId}" onchange="toggleRowPayment('${clientId}', this.value)">
+            <option value="cash">Деньгами</option>
+            <option value="subscription">С абонемента</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;">Способ</label>
+          <select name="payment_method_${clientId}" id="pay-method-${clientId}">
+            <option value="cash">Нал</option>
+            <option value="card">Безнал</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;">Часы</label>
+          <input type="number" name="hours_${clientId}" min="0.5" step="0.5" value="1" disabled>
+        </div>
+        <div id="sub-wrap-${clientId}" style="display:none;">
+          <label style="font-size:10px;">Абонемент / списать</label>
+          <div style="display:flex; gap:6px;">
+            <select name="subscription_id_${clientId}">${subscriptionsOptions(clientId)}</select>
+            <input type="number" name="lessons_to_write_off_${clientId}" min="1" step="1" value="1" style="max-width:70px;">
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function syncIntensiveHoursToParticipants() {
+  const hours = document.querySelector('input[name="hours"]')?.value || '1';
+  document.querySelectorAll('input[name^="hours_"]').forEach(inp => {
+    inp.value = hours;
+  });
+}
+
+function toggleRowPayment(clientId, mode) {
+  const subWrap = document.getElementById(`sub-wrap-${clientId}`);
+  const methodSel = document.getElementById(`pay-method-${clientId}`);
+  if (!subWrap || !methodSel) return;
+  subWrap.style.display = mode === 'subscription' ? 'block' : 'none';
+  methodSel.disabled = mode === 'subscription';
+}
+
+function toggleIntensiveParticipantFields() {
+  const mode = document.getElementById('participant-mode').value;
+  document.getElementById('intensive-group-wrap').hidden = mode !== 'group';
+  document.getElementById('intensive-clients-wrap').style.display = mode === 'group' ? 'none' : 'block';
+  renderParticipantPayments();
+}
+
+function filterIntensiveClients(query) {
+  const normalizedQuery = (query || '').trim().toLowerCase();
+  const options = document.querySelectorAll('.intensive-client-option');
+  options.forEach(option => {
+    const name = option.dataset.clientName || '';
+    option.style.display = !normalizedQuery || name.includes(normalizedQuery) ? 'flex' : 'none';
+  });
+}
+
+function filterIndividualClients(query) {
+  const normalizedQuery = (query || '').trim().toLowerCase();
+  const options = document.querySelectorAll('.individual-client-option');
+  const hint = document.getElementById('individual-client-hint');
+  let visibleCount = 0;
+  let totalMatches = 0;
+  options.forEach(option => {
+    const name = option.dataset.clientName || '';
+    const matched = !normalizedQuery || name.includes(normalizedQuery);
+    if (matched) totalMatches += 1;
+    if (!matched) {
+      option.style.display = 'none';
+      return;
+    }
+
+    // Чтобы список не выглядел слишком длинным без поиска.
+    if (!normalizedQuery && visibleCount >= 20) {
+      option.style.display = 'none';
+      return;
+    }
+
+    option.style.display = 'flex';
+    visibleCount += 1;
+  });
+
+  if (!hint) return;
+  if (!normalizedQuery) {
+    const hidden = Math.max(totalMatches - visibleCount, 0);
+    hint.textContent = hidden > 0
+      ? `Показаны первые ${visibleCount} клиентов. Введите имя, чтобы найти остальных.`
+      : `Показано клиентов: ${visibleCount}`;
+    return;
+  }
+  hint.textContent = totalMatches > 0
+    ? `Найдено клиентов: ${totalMatches}`
+    : 'По вашему запросу клиенты не найдены';
+}
+
+function toggleIndividualPaymentFields() {
+  const paymentOption = document.getElementById('individual-payment-option');
+  const splitBlock = document.getElementById('individual-split-payment');
+  const amountInput = document.getElementById('individual-amount');
+  const cashInput = document.getElementById('individual-cash-amount');
+  const nonCashInput = document.getElementById('individual-non-cash-amount');
+
+  if (!paymentOption || !splitBlock || !amountInput || !cashInput || !nonCashInput) return;
+
+  const amount = Math.max(parseFloat(amountInput.value || '0'), 0);
+  const isMixed = paymentOption.value === 'mixed';
+  splitBlock.style.display = isMixed ? 'grid' : 'none';
+
+  if (!isMixed) {
+    cashInput.value = paymentOption.value === 'cash' ? amount.toFixed(0) : '0';
+    nonCashInput.value = paymentOption.value === 'card' ? amount.toFixed(0) : '0';
+  }
+}
+
+function renderParticipantPayments() {
+  const mode = document.getElementById('participant-mode').value;
+  const container = document.getElementById('participant-payments');
+  let ids = [];
+  const nameMap = {};
+  if (mode === 'group') {
+    const gid = document.querySelector('select[name="group_id"]').value;
+    const groupMembers = groupMembersByGroup[gid] || [];
+    ids = groupMembers.map(x => String(x.id));
+    groupMembers.forEach(member => {
+      nameMap[String(member.id)] = member.name;
+    });
+  } else {
+    ids = Array.from(document.querySelectorAll('input[name="client_ids"]:checked')).map(el => el.value);
+    const checkedBoxes = Array.from(document.querySelectorAll('input[name="client_ids"]:checked'));
+    checkedBoxes.forEach(cb => {
+      const label = cb.closest('label');
+      if (label) {
+        nameMap[cb.value] = label.textContent.trim();
+      }
+    });
+  }
+  if (!ids.length) {
+    container.innerHTML = '<div style="color:var(--muted); font-size:13px;">Выберите участников, затем у каждого укажите тип оплаты и часы.</div>';
+    return;
+  }
+  container.innerHTML = ids.map(id => paymentRow(id, nameMap[id] || `Клиент #${id}`)).join('');
+  syncIntensiveHoursToParticipants();
+}
+
+toggleScheduleMode();
+
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.name === 'hours') {
+    syncIntensiveHoursToParticipants();
+  }
+  if (e.target && e.target.id === 'individual-amount') {
+    toggleIndividualPaymentFields();
+  }
+});
+
+toggleIndividualPaymentFields();
+filterIndividualClients('');
+</script>
+{% endblock %}

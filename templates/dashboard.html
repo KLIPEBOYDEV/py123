@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Дашборд{% endblock %}
+{% block topbar_title %}Дашборд{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon">👤</div>
+    <div>
+      <div class="stat-value">{{ stats.clients }}</div>
+      <div class="stat-label">Клиентов</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">👥</div>
+    <div>
+      <div class="stat-value">{{ stats.groups }}</div>
+      <div class="stat-label">Групп</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🎓</div>
+    <div>
+      <div class="stat-value">{{ stats.trainers }}</div>
+      <div class="stat-label">Тренеров</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🎫</div>
+    <div>
+      <div class="stat-value">{{ stats.subscriptions }}</div>
+      <div class="stat-label">Активных абонементов</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">📅 Занятия сегодня — {{ today }}</div>
+    <a href="{{ url_for('schedule') }}" class="btn btn-secondary btn-sm">Всё расписание</a>
+  </div>
+  {% if schedule_today %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Время</th>
+          <th>Группа</th>
+          <th>Тренер</th>
+          <th>Зал</th>
+          <th>Длит.</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in schedule_today %}
+        <tr>
+          <td><strong style="color: var(--accent)">{{ s.time }}</strong></td>
+          <td>{{ s.group_name }}</td>
+          <td>{{ s.trainer_name or '—' }}</td>
+          <td>{{ s.room or '—' }}</td>
+          <td>{{ s.duration_minutes }} мин</td>
+          <td>
+            <a href="{{ url_for('attendance_form', id=s.id) }}" class="btn btn-secondary btn-sm">Посещаемость</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">📭</div>
+    <p>Сегодня занятий нет</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

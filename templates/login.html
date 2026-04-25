@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вход — XLab Dance studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f; --surface: #141418; --border: #2a2a35;
+    --accent: #c8a96e; --accent2: #e8c88a; --text: #e8e4dc; --muted: #7a7a8a;
+    --danger: #e05555;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text); font-family: 'Jost', sans-serif;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background-image: radial-gradient(ellipse at 30% 20%, rgba(200,169,110,0.06) 0%, transparent 60%),
+                      radial-gradient(ellipse at 70% 80%, rgba(200,169,110,0.04) 0%, transparent 50%);
+  }
+  .login-wrap { width: 100%; max-width: 400px; padding: 20px; }
+  .logo { text-align: center; margin-bottom: 40px; }
+  .logo h1 { font-family: 'Playfair Display', serif; font-size: 36px; color: var(--accent); }
+  .logo p { font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 36px;
+  }
+  .card h2 { font-family: 'Playfair Display', serif; font-size: 20px; margin-bottom: 24px; text-align: center; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  input {
+    background: #1c1c22; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 12px 14px; font-size: 14px; font-family: 'Jost', sans-serif;
+    transition: border-color 0.2s; width: 100%;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  .btn {
+    width: 100%; padding: 13px; background: var(--accent); color: #0d0d0f;
+    border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: 'Jost', sans-serif; transition: background 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .btn:hover { background: var(--accent2); }
+  .flash { padding: 11px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 13px;
+    background: rgba(224,85,85,0.1); border-left: 3px solid var(--danger); color: var(--danger); }
+  .hint { text-align: center; margin-top: 16px; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="logo">
+    <h1>XLab Dance Studio</h1>
+    <p>Система управления</p>
+  </div>
+  <div class="card">
+    <h2>Вход в систему</h2>
+    {% for category, message in get_flashed_messages(with_categories=True) %}
+      <div class="flash">{{ message }}</div>
+    {% endfor %}
+    <form method="POST">
+      <div class="form-group">
+        <label>Логин</label>
+        <input type="text" name="username" placeholder="admin" required autofocus>
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" name="password" placeholder="••••••••" required>
+      </div>
+      <button class="btn" type="submit">Войти</button>
+    </form>
+    <p class="hint">По умолчанию: admin / admin123</p>
+  </div>
+</div>
+</body>
+</html>

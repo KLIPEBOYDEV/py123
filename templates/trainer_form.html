@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Редактировать' if trainer else 'Добавить' }} тренера{% endblock %}
+{% block topbar_title %}{{ 'Редактировать' if trainer else 'Добавить' }} тренера{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 640px">
+  <form method="POST">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Полное имя *</label>
+        <input type="text" name="name" value="{{ trainer.name if trainer else '' }}" required placeholder="Иванова Мария Петровна">
+      </div>
+      <div class="form-group">
+        <label>Телефон</label>
+        <input type="tel" name="phone" value="{{ trainer.phone if trainer else '' }}" placeholder="+7 (999) 000-00-00">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" value="{{ trainer.email if trainer else '' }}" placeholder="trainer@example.com">
+      </div>
+      <div class="form-group full">
+        <label>Специализация</label>
+        <input type="text" name="specialization" value="{{ trainer.specialization if trainer else '' }}" placeholder="Хип-хоп, Стрит-джаз, Современный танец">
+      </div>
+      <div class="form-group full">
+        <label>Заметки</label>
+        <textarea name="notes">{{ trainer.notes if trainer else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Роль доступа *</label>
+        <select name="role" {{ 'disabled' if (not is_admin) else '' }}>
+          <option value="trainer" {{ 'selected' if (selected_role if selected_role is defined else 'trainer') == 'trainer' else '' }}>Тренер</option>
+          <option value="admin" {{ 'selected' if (selected_role if selected_role is defined else 'trainer') == 'admin' else '' }}>Администратор</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Логин для входа</label>
+        <input type="text" name="username" value="{{ trainer_account.username if trainer_account else '' }}" placeholder="login" {{ '' if trainer else 'required' }} {{ 'readonly' if trainer else '' }}>
+      </div>
+      <div class="form-group">
+        <label>Пароль {{ '(новый)' if trainer else '' }}</label>
+        <input type="password" name="password" placeholder="{{ 'Оставьте пустым, чтобы не менять' if trainer else 'Введите пароль' }}">
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{{ 'Сохранить' if trainer else 'Добавить' }}</button>
+      <a href="{{ url_for('trainers') }}" class="btn btn-secondary">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

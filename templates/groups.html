@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Группы{% endblock %}
+{% block topbar_title %}Группы{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-secondary" onclick="document.getElementById('group-recurring-modal').classList.add('open')">⟳ Несколько тренировок</button>
+  <a href="{{ url_for('add_group') }}" class="btn btn-primary">+ Создать группу</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  {% if groups %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Группа</th><th>Тренер</th><th>Возраст</th><th>Уровень</th><th>Уч-ков</th><th>Макс.</th><th>Действия</th></tr>
+      </thead>
+      <tbody>
+        {% for g in groups %}
+        <tr>
+          <td><a href="{{ url_for('group_detail', id=g.id) }}" style="font-weight:600">{{ g.name }}</a></td>
+          <td>{{ g.trainer_name or '—' }}</td>
+          <td>{{ g.age_range or '—' }}</td>
+          <td>{{ g.level or '—' }}</td>
+          <td>
+            <span class="badge {{ 'badge-red' if g.clients_count >= g.max_capacity else 'badge-green' }}">
+              {{ g.clients_count }}
+            </span>
+          </td>
+          <td>{{ g.max_capacity }}</td>
+          <td>
+            <div style="display:flex; gap:6px">
+              <a href="{{ url_for('group_detail', id=g.id) }}" class="btn btn-secondary btn-sm">Открыть</a>
+              <a href="{{ url_for('edit_group', id=g.id) }}" class="btn btn-secondary btn-sm">Изменить</a>
+              <form method="POST" action="{{ url_for('delete_group', id=g.id) }}" onsubmit="return confirm('Удалить группу?')">
+                <button class="btn btn-danger btn-sm">Удалить</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">👥</div>
+    <p>Групп пока нет. <a href="{{ url_for('add_group') }}">Создать первую</a></p>
+  </div>
+  {% endif %}
+</div>
+
+<div class="modal-overlay" id="group-recurring-modal">
+  <div class="modal" style="max-width:620px">
+    <h3>Добавить несколько тренировок</h3>
+    <form method="POST" action="{{ url_for('add_schedule') }}">
+      <input type="hidden" name="schedule_mode" value="recurring">
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Группа *</label>
+        <select name="group_id" required>
+          <option value="">— Выберите —</option>
+          {% for g in groups %}
+          <option value="{{ g.id }}">{{ g.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+        <div class="form-group">
+          <label>С даты *</label>
+          <input type="date" name="start_date" required>
+        </div>
+        <div class="form-group">
+          <label>По дату *</label>
+          <input type="date" name="end_date" required>
+        </div>
+        <div class="form-group">
+          <label>Время *</label>
+          <input type="time" name="time" required value="19:00">
+        </div>
+        <div class="form-group">
+          <label>Длительность (мин)</label>
+          <input type="number" name="duration" value="60" min="15" step="15">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Дни недели *</label>
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:6px">
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="0"> Пн</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="1"> Вт</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="2"> Ср</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="3"> Чт</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="4"> Пт</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="5"> Сб</label>
+          <label class="checkbox-label"><input type="checkbox" name="weekdays" value="6"> Вс</label>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px">
+        <div class="form-group">
+          <label>Зал</label>
+          <input type="text" name="room" placeholder="Зал 1">
+        </div>
+        <div class="form-group">
+          <label>Заметки</label>
+          <input type="text" name="notes" placeholder="Необязательно">
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:16px">
+        <button type="submit" class="btn btn-primary">Создать расписание</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('group-recurring-modal').classList.remove('open')">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
